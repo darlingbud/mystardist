@@ -12,11 +12,11 @@ class double_conv(nn.Module):
         num_groups = out_ch // 8
         self.conv = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, padding=1),
-            nn.GroupNorm(num_channels=out_ch,num_groups=num_groups),
+            nn.BatchNorm2d(out_ch),
             nn.ELU(inplace=True),
             #nn.ReLU(inplace=True),
             nn.Conv2d(out_ch, out_ch, 3, padding=1),
-            nn.GroupNorm(num_channels=out_ch,num_groups=num_groups),
+            nn.BatchNorm2d(out_ch),
             nn.ELU(inplace=True)
             #nn.ReLU(inplace=True)
         )
