@@ -33,7 +33,7 @@ from datetime import datetime
 print('Successfully import all requirments!')
 
 Load_SAVEPOINT=True
-checkpoint_dir='./mystardist/trained_point/best_Dice_model.pth'
+checkpoint_dir='./mystardist/trained_point/best_Dice_model42.pth'
 
 def main():
     parser = argparse.ArgumentParser('Baseline for Microscopy image segmentation',add_help=False)
@@ -42,7 +42,7 @@ def main():
     parser.add_argument('--seed',default=2022,type=int)
     parser.add_argument('--radial',default=32)
     parser.add_argument('--lr',default=6e-4)
-    parser.add_argument('--max_epochs',default=100)
+    parser.add_argument('--max_epochs',default=60)
     parser.add_argument('--epoch_tolerance',default=10)
     parser.add_argument('--val_interval',default=2)
     parser.add_argument('--input_size',default=256)
@@ -62,8 +62,8 @@ def main():
             ScaleIntensityd(keys=["img"], allow_missing_keys=True), # Do not scale label
             SpatialPadd(keys=["img","prob","dist"], spatial_size=args.input_size),
             RandSpatialCropd(keys=["img","prob","dist"], roi_size=args.input_size, random_size=False),
-            RandAxisFlipd(keys=["img", "prob","dist"], prob=0.5),
-            RandRotate90d(keys=["img", "prob","dist"], prob=0.5, spatial_axes=[0, 1]),
+            #RandAxisFlipd(keys=["img", "prob","dist"], prob=0.5),
+            #RandRotate90d(keys=["img", "prob","dist"], prob=0.5, spatial_axes=[0, 1]),
             # # # intensity transform 
             RandGaussianNoised(keys=['img'], prob=0.25, mean=0, std=0.1),
             RandAdjustContrastd(keys=["img"], prob=0.25, gamma=(1,2)),
@@ -87,14 +87,14 @@ def main():
     model=UNetStar(n_channels=1,n_classes=args.radial).to(device)
     optimizer=torch.optim.Adam(model.parameters())
     scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min',factor=0.5,verbose=True,patience=6,eps=1e-8,threshold=1e-20)
-    loss_fuc=L1_BCELoss()
+    loss_fuc=L1_BCELoss([2,1])
     writer=SummaryWriter(model_path)
     #scheduler=ReduceLROnPlateau(optimizer, 'min',factor=0.5,verbose=True,patience=6,eps=1e-8,threshold=1e-20)
 
     #start training
     max_epochs=args.max_epochs
     epoch_tolerance=args.epoch_tolerance
-    best_metric=-1
+    best_metric=10010
     best_metric_epoch=-1
     writer=SummaryWriter(model_path)
     global_step=0
@@ -119,9 +119,9 @@ def main():
                 writer.add_scalar("train_bceloss",bce,global_step)
                 writer.add_scalar("trian_l1loss",l1,global_step)
                 pbar.update(input.shape[0])
-         
             
-            if epoch>0 and epoch%5==0:
+            ##if epoch>0:
+            if epoch>0 and (epoch+1)%5==0:
                 model.eval()
                 val_loss=0
                 with torch.no_grad():
@@ -149,13 +149,13 @@ def main():
                             torch.save(checkpoint, join(model_path, "best_Dice_model.pth"))
                             print("saved new best metric model")
 
-            if (epoch - best_metric_epoch) > epoch_tolerance:
+                if best_metric_epoch!=-1 and (epoch - best_metric_epoch) > epoch_tolerance:
+                    
+                    print(f"validation metric does not improve for {epoch_tolerance} epochs! current {epoch=}, {best_metric_epoch=}")
+                    break
                 
-                print(f"validation metric does not improve for {epoch_tolerance} epochs! current {epoch=}, {best_metric_epoch=}")
-                break
-               
     writer.close()
-    torch.save(checkpoint,join(model_path,'final_model.pth')) 
+    #torch.save(checkpoint,join(model_path,'final_model.pth')) 
           
 if __name__=="__main__":
     main()
